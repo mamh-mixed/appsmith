@@ -1,17 +1,31 @@
-import { BranchListItem } from "./BranchListItem";
 import React from "react";
+import Tooltip from "components/ads/Tooltip";
+import { isEllipsisActive } from "utils/helpers";
+import { Position } from "@blueprintjs/core";
+import Text, { TextType } from "components/ads/Text";
+import { BranchListItemContainer } from "./BranchListItemContainer";
 
 export function RemoteBranchListItem({ branch, className, onClick }: any) {
+  const textRef = React.useRef<HTMLSpanElement>(null);
   return (
-    <BranchListItem
+    <BranchListItemContainer
       active={false}
-      branch={branch}
       className={className}
       isDefault={false}
-      key={branch}
       onClick={onClick}
+      ref={null}
       selected={false}
-      shouldScrollIntoView={false}
-    />
+    >
+      <Tooltip
+        boundary="window"
+        content={branch}
+        disabled={!isEllipsisActive(textRef.current)}
+        position={Position.TOP}
+      >
+        <Text ref={textRef} type={TextType.P1}>
+          {branch}
+        </Text>
+      </Tooltip>
+    </BranchListItemContainer>
   );
 }

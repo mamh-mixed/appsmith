@@ -25,10 +25,12 @@ export const BranchListItemContainer = styled.div<{
   background-color: ${(props) =>
     props.selected || props.active ? Colors.GREY_3 : ""};
 
-  display: ${(props) => (props.isDefault ? "flex" : "block")};
+  display: grid;
+  grid-gap: 16px;
+  grid-template-columns: 9fr 1fr;
 
   .${Classes.TEXT} {
-    width: 100%;
+    width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     display: block;

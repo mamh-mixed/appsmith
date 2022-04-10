@@ -6,6 +6,7 @@ import { isEllipsisActive } from "utils/helpers";
 import { Position } from "@blueprintjs/core";
 import Text, { TextType } from "components/ads/Text";
 import DefaultTag from "./DefaultTag";
+import useHover from "../hooks/useHover";
 
 export function BranchListItem({
   active,
@@ -18,6 +19,7 @@ export function BranchListItem({
 }: any) {
   const itemRef = React.useRef<HTMLDivElement>(null);
   const textRef = React.useRef<HTMLSpanElement>(null);
+  const [hover] = useHover(itemRef);
   useEffect(() => {
     if (itemRef.current && shouldScrollIntoView)
       scrollIntoView(itemRef.current, {
@@ -47,6 +49,7 @@ export function BranchListItem({
         </Text>
       </Tooltip>
       {isDefault && <DefaultTag />}
+      {hover && !isDefault && <>...</>}
     </BranchListItemContainer>
   );
 }
