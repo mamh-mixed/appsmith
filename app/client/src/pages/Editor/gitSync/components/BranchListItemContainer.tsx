@@ -4,7 +4,7 @@ import { Colors } from "constants/Colors";
 import { Classes } from "components/ads";
 
 export const BranchListItemContainer = styled.div<{
-  hovered?: boolean;
+  selected?: boolean;
   active?: boolean;
   isDefault?: boolean;
 }>`
@@ -23,7 +23,7 @@ export const BranchListItemContainer = styled.div<{
   overflow: hidden;
   text-overflow: ellipsis;
   background-color: ${(props) =>
-    props.hovered || props.active ? Colors.GREY_3 : ""};
+    props.selected || props.active ? Colors.GREY_3 : ""};
 
   display: ${(props) => (props.isDefault ? "flex" : "block")};
 

@@ -7,10 +7,10 @@ export function RemoteBranchListItem({ branch, className, onClick }: any) {
       active={false}
       branch={branch}
       className={className}
-      hovered={false}
       isDefault={false}
       key={branch}
       onClick={onClick}
+      selected={false}
       shouldScrollIntoView={false}
     />
   );

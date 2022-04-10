@@ -1,5 +1,4 @@
 import { render, screen } from "test/testUtils";
-import React from "react";
 import "jest-styled-components";
 
 import { RemoteBranchList } from "./RemoteBranchList";

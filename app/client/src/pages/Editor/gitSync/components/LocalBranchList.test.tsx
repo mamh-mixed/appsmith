@@ -1,7 +1,5 @@
 import { render, screen } from "test/testUtils";
-import React from "react";
 import "jest-styled-components";
-
 import { LocalBranchList } from "./LocalBranchList";
 
 describe("LocalBranchList", function() {

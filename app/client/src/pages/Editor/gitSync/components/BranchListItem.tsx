@@ -11,9 +11,9 @@ export function BranchListItem({
   active,
   branch,
   className,
-  hovered,
   isDefault,
   onClick,
+  selected,
   shouldScrollIntoView,
 }: any) {
   const itemRef = React.useRef<HTMLDivElement>(null);
@@ -31,10 +31,10 @@ export function BranchListItem({
     <BranchListItemContainer
       active={active}
       className={className}
-      hovered={hovered}
       isDefault={isDefault}
       onClick={onClick}
       ref={itemRef}
+      selected={selected}
     >
       <Tooltip
         boundary="window"

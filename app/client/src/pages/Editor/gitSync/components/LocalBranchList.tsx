@@ -9,7 +9,7 @@ import { createMessage, LOCAL_BRANCHES } from "@appsmith/constants/messages";
  * @param localBranches {string[]} branches that don't start with origin/
  * @param currentBranch {string | undefined} current checked out branch in backend
  * @param isCreateNewBranchInputValid {boolean}
- * @param activeHoverIndex {number} used to figure out which list item is being hovered
+ * @param activeHoverIndex {number} used to figure out which list item is being selected
  * @param defaultBranch {string | undefined} this is used to put DEFAULT tag on "master" branch, which is the default branch name in the backend
  * @param switchBranch {(branch: string) => never} dispatches ReduxActionTypes.SWITCH_GIT_BRANCH_INIT
  */
@@ -40,10 +40,10 @@ export function LocalBranchList(
             active={currentBranch === branch}
             branch={branch}
             className="t--branch-item"
-            hovered={isActive}
             isDefault={branch === defaultBranch}
             key={branch}
             onClick={() => switchBranch(branch)}
+            selected={isActive}
             shouldScrollIntoView={isActive}
           />
         ))}
