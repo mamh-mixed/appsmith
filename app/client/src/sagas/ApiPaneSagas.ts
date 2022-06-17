@@ -189,17 +189,17 @@ function* handleUpdateBodyContentType(
   );
   const indexToUpdate = getIndextoUpdate(headers, contentTypeHeaderIndex);
 
-  // If the user has selected "None" or "Raw" as the body type & there was a content-type
-  // header present in the API configuration, keep the previous content type header
-  // this is done to ensure user input isn't cleared off if they switch to raw or none mode.
+  // If the user has selected "None" as the body type & there was a content-type
+  // header present in the API configuration, remove the content type header
+  // this is done to ensure none content type is not sent for execution (which causes error).
   // however if the user types in a new value, we use the updated value (formValueChangeSaga - line 426).
   if (
     displayFormatValue === POST_BODY_FORMAT_OPTIONS.NONE &&
     indexToUpdate !== -1
   ) {
     headers[indexToUpdate] = {
-      key: previousContentType ? CONTENT_TYPE_HEADER_KEY : "",
-      value: previousContentType ? previousContentType : "",
+      key: "",
+      value: "",
     };
   } else {
     headers[indexToUpdate] = {
@@ -371,6 +371,7 @@ function* setHeaderFormat(apiId: string, apiContentType?: string) {
 
 export function* updateFormFields(
   actionPayload: ReduxActionWithMeta<string, { field: string }>,
+  apiId: string,
 ) {
   const field = actionPayload.meta.field;
   const value = actionPayload.payload;
@@ -411,22 +412,35 @@ export function* updateFormFields(
         key: CONTENT_TYPE_HEADER_KEY,
         value: apiContentType,
       };
+      //Auto set the tab according to new  API contenttype
+      yield put({
+        type: ReduxActionTypes.SET_EXTRA_FORMDATA,
+        payload: {
+          id: apiId,
+          values: {
+            displayFormat: {
+              label: apiContentType,
+              value: apiContentType,
+            },
+          },
+        },
+      });
     } else {
       // when user switches to GET method, do not clear off content type headers, instead leave them.
       if (isEmpty(values?.actionConfiguration?.body)) {
         apiContentType = HTTP_METHODS_DEFAULT_FORMAT_TYPES.GET;
         extraFormDataToBeChanged = true;
       }
-
+      //By default GET shouldn't have any content type.
       if (contentTypeHeaderIndex > -1) {
         actionConfigurationHeaders[contentTypeHeaderIndex] = {
-          key: CONTENT_TYPE_HEADER_KEY,
-          value: apiContentType,
+          key: "",
+          value: "",
         };
       } else {
         actionConfigurationHeaders[indexToUpdate] = {
-          key: CONTENT_TYPE_HEADER_KEY,
-          value: HTTP_METHODS_DEFAULT_FORMAT_TYPES.GET,
+          key: "",
+          value: "",
         };
       }
     }
@@ -451,6 +465,7 @@ function* formValueChangeSaga(
   if (field === "dynamicBindingPathList" || field === "name") return;
   const { values } = yield select(getFormData, API_EDITOR_FORM_NAME);
   if (!values.id) return;
+  const apiId = get(values, "id");
   const contentTypeHeaderIndex = values.actionConfiguration.headers.findIndex(
     (header: { key: string; value: string }) =>
       header?.key?.trim().toLowerCase() === CONTENT_TYPE_HEADER_KEY,
@@ -487,7 +502,6 @@ function* formValueChangeSaga(
           actionPayload.payload,
         ),
       );
-      const apiId = get(values, "id");
       // when the user specifically sets a new content type value, we check if the input value is a supported post body type and switch to it
       // if it does not we set the default to Raw mode.
       yield call(setHeaderFormat, apiId, actionPayload.payload);
@@ -495,7 +509,7 @@ function* formValueChangeSaga(
   }
   yield all([
     call(syncApiParamsSaga, actionPayload, values.id),
-    call(updateFormFields, actionPayload),
+    call(updateFormFields, actionPayload, apiId),
   ]);
 
   // We need to refetch form values here since syncApuParams saga and updateFormFields directly update reform form values.
