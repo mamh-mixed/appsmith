@@ -72,7 +72,7 @@ describe("Table Widget V2 property pane feature validation", function() {
       .click({ force: true });
     // eslint-disable-next-line cypress/no-unnecessary-waiting
     cy.wait(1000);
-    cy.toggleJsAndUpdate("tabledata", testdata.bindingVerticalAlig);
+    cy.toggleJsAndUpdateWithIndex("tabledata", testdata.bindingVerticalAlig, 3);
 
     cy.readTableV2dataValidateCSS("0", "0", "align-items", "flex-start");
     cy.readTableV2dataValidateCSS("1", "0", "align-items", "flex-end");

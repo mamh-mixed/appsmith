@@ -3,7 +3,6 @@ import homePage from "../../../../locators/HomePage";
 const publish = require("../../../../locators/publishWidgetspage.json");
 const dsl = require("../../../../fixtures/tablev1NewDsl.json");
 
-
 describe("Table Widget", function() {
   before(() => {
     cy.addDsl(dsl);
@@ -24,6 +23,7 @@ describe("Table Widget", function() {
     cy.dragAndDropToCanvas("switchwidget", { x: 200, y: 500 });
     cy.wait(1000);
     cy.wait("@updateLayout");
+    cy.openPropertyPane("tabledata");
     cy.get(".t--property-control-tabledata").then(($el) => {
       cy.updateCodeInput($el, jsContext);
     });
