@@ -1,6 +1,9 @@
 const dsl = require("../../../../../fixtures/tableV2NewDsl.json");
 const commonlocators = require("../../../../../locators/commonlocators.json");
+const widgetsPage = require("../../../../../locators/Widgets.json");
+import { ObjectsRegistry } from "../../../../../support/Objects/Registry";
 
+const propPane = ObjectsRegistry.PropertyPane;
 const data = [
   {
     "普通话 [普通話] ": "mandarin",
@@ -18,9 +21,13 @@ describe("Custom column alias functionality", () => {
 
   it("should test that custom column has alias property", () => {
     cy.openPropertyPane("tablewidgetv2");
-    cy.testJsontext("tabledata", `${JSON.stringify(data)}`);
+    propPane.UpdatePropertyFieldValue(
+      "Table Data",
+      JSON.stringify(data),
+    );
     cy.wait("@updateLayout");
-    cy.addColumnV2("text");
+    cy.wait(1000);
+    cy.addColumnV2("customColumn1");
     cy.editColumn("customColumn1");
     cy.get(".t--property-control-propertyname").should("exist");
     cy.get(".t--property-control-propertyname .CodeMirror-code")
@@ -33,10 +40,16 @@ describe("Custom column alias functionality", () => {
   it("should test that custom alias is used in the selectedRow", () => {
     cy.dragAndDropToCanvas("textwidget", { x: 200, y: 100 });
     cy.openPropertyPane("textwidget");
-    cy.testJsontext("text", "{{Table1.selectedRow}}");
+    propPane.UpdatePropertyFieldValue(
+      "Text",
+      "{{Table1.selectedRow}}",
+    );
     cy.openPropertyPane("tablewidgetv2");
     cy.editColumn("customColumn1");
-    cy.testJsontext("propertyname", "columnAlias");
+    propPane.UpdatePropertyFieldValue(
+      "Property name",
+      "columnAlias",
+    );
     cy.get(".t--widget-textwidget .bp3-ui-text").should(
       "contain",
       `{  "普通话 [普通話] ": "",  "français": "",  "español": "",  "日本語": "",  "हिन्दी": "",  "columnAlias": ""}`,
@@ -50,9 +63,15 @@ describe("Custom column alias functionality", () => {
 
   it("should test that custom alias is used in the triggeredRow", () => {
     cy.openPropertyPane("textwidget");
-    cy.testJsontext("text", "{{Table1.triggeredRow}}");
+    propPane.UpdatePropertyFieldValue(
+      "Text",
+      "{{Table1.triggeredRow}}",
+    );
     cy.openPropertyPane("tablewidgetv2");
-    cy.addColumnV2("customColumn2");
+    cy.get(widgetsPage.addColumn).scrollIntoView();
+    cy.get(widgetsPage.addColumn)
+      .click({ force: true });
+    cy.wait(500);
     cy.editColumn("customColumn2");
     cy.get(commonlocators.changeColType)
       .last()

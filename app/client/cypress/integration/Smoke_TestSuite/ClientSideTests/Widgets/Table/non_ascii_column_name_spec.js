@@ -1,6 +1,8 @@
 const dsl = require("../../../../../fixtures/tableV2NewDsl.json");
 const commonlocators = require("../../../../../locators/commonlocators.json");
+import { ObjectsRegistry } from "../../../../../support/Objects/Registry";
 
+const propPane = ObjectsRegistry.PropertyPane;
 const data = [
   {
     "普通话 [普通話] ": "mandarin",
@@ -18,7 +20,10 @@ describe("Non ASCII character functionality", () => {
 
   it("should test that Non ASCII characters in the tableData are shown in the table column header", () => {
     cy.openPropertyPane("tablewidgetv2");
-    cy.testJsontext("tabledata", `${JSON.stringify(data)}`);
+    propPane.UpdatePropertyFieldValue(
+      "Table Data",
+      JSON.stringify(data),
+    );
     cy.wait("@updateLayout");
     Object.keys(data[0]).forEach((column) => {
       cy.get(
@@ -30,7 +35,10 @@ describe("Non ASCII character functionality", () => {
   it("should test that selectedRow also retains the non-ascii characters", () => {
     cy.dragAndDropToCanvas("textwidget", { x: 200, y: 100 });
     cy.openPropertyPane("textwidget");
-    cy.testJsontext("text", "{{Table1.selectedRow}}");
+    propPane.UpdatePropertyFieldValue(
+      "Text",
+      "{{Table1.selectedRow}}",
+    );
     cy.get(".t--widget-textwidget .bp3-ui-text").should(
       "contain",
       `{  "普通话 [普通話] ": "",  "français": "",  "español": "",  "日本語": "",  "हिन्दी": ""}`,
@@ -44,7 +52,10 @@ describe("Non ASCII character functionality", () => {
 
   it("should test that triggeredRow also retains the non-ascii characters", () => {
     cy.openPropertyPane("textwidget");
-    cy.testJsontext("text", "{{Table1.triggeredRow}}");
+    propPane.UpdatePropertyFieldValue(
+      "Text",
+      "{{Table1.triggeredRow}}",
+    );
     cy.openPropertyPane("tablewidgetv2");
     cy.addColumnV2("button");
     cy.editColumn("customColumn1");
