@@ -92,7 +92,7 @@ describe("Table Widget V2 property pane feature validation", function() {
       .click({ force: true });
     // eslint-disable-next-line cypress/no-unnecessary-waiting
     cy.wait(1000);
-    cy.toggleJsAndUpdate("tabledata", testdata.bindingStyle);
+    cy.toggleJsAndUpdateWithIndex("tabledata", testdata.bindingStyle, 3);
 
     cy.readTableV2dataValidateCSS("0", "0", "font-style", "normal");
     cy.readTableV2dataValidateCSS("1", "0", "font-style", "italic");

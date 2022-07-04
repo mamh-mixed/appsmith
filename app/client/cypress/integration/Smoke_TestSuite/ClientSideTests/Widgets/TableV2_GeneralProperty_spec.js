@@ -176,7 +176,7 @@ describe("Table Widget property pane feature validation", function() {
     // CHange the Column email name to Email Address
     cy.editColName("Email Address");
     // verify changed email name is visible
-    cy.get(".draggable-header:contains('Email Address')").should("be.visible");
+    cy.get("[data-header='Email Address']").should("be.visible");
     cy.get(commonlocators.editPropBackButton).click({ force: true });
   });
 

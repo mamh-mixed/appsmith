@@ -4,10 +4,6 @@ const publish = require("../../../../locators/publishWidgetspage.json");
 const dsl = require("../../../../fixtures/tablev1NewDsl.json");
 
 describe("Table Widget", function() {
-  before(() => {
-    cy.addDsl(dsl);
-  });
-
   it("1. Table Widget Functionality To Check with changing schema of tabledata", () => {
     let jsContext = `{{Switch1.isSwitchedOn?[{name: "joe"}]:[{employee_name: "john"}];}}`;
     cy.NavigateToHome();
@@ -19,11 +15,12 @@ describe("Table Widget", function() {
       "response.body.responseMeta.status",
       201,
     );
+    cy.addDsl(dsl);
     cy.get(explorer.addWidget).click();
     cy.dragAndDropToCanvas("switchwidget", { x: 200, y: 500 });
     cy.wait(1000);
     cy.wait("@updateLayout");
-    cy.openPropertyPane("tabledata");
+    cy.openPropertyPane("tablewidget");
     cy.get(".t--property-control-tabledata").then(($el) => {
       cy.updateCodeInput($el, jsContext);
     });
@@ -38,6 +35,7 @@ describe("Table Widget", function() {
     cy.get(".t--switch-widget-active")
       .first()
       .click();
+    cy.get(".t--widget-tablewidget").scrollIntoView();
     cy.wait(1000);
     cy.getTableDataSelector("0", "0").then((element) => {
       cy.get(element).should("be.visible");
@@ -49,6 +47,7 @@ describe("Table Widget", function() {
       .first()
       .click();
     cy.wait(1000);
+    cy.get(".t--widget-tablewidget").scrollIntoView();
     cy.getTableDataSelector("0", "0").then((element) => {
       cy.get(element).should("be.visible");
     });
