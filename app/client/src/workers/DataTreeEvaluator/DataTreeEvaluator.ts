@@ -49,6 +49,7 @@ import {
   getParams,
   updateJSCollectionInDataTree,
   removeFunctionsAndVariableJSCollection,
+  removeLintErrorsFromEntityProperty,
 } from "workers/evaluationUtils";
 import _ from "lodash";
 import { applyChange, Diff, diff } from "deep-diff";
@@ -99,6 +100,8 @@ export default class DataTreeEvaluator {
   currentJSCollectionState: Record<string, any> = {};
   logs: unknown[] = [];
   allActionValidationConfig?: { [actionId: string]: ActionValidationConfigMap };
+  triggerFieldDependencyMap: DependencyMap = {};
+  triggerFieldInverseDependencyMap: DependencyMap = {};
   public hasCyclicalDependency = false;
   constructor(
     widgetConfigMap: WidgetTypeConfigMap,
@@ -139,6 +142,9 @@ export default class DataTreeEvaluator {
     // Create dependency map
     const createDependencyStart = performance.now();
     this.dependencyMap = this.createDependencyMap(localUnEvalTree);
+    this.triggerFieldDependencyMap = this.createTriggerFieldDependencyMap(
+      localUnEvalTree,
+    );
     const createDependencyEnd = performance.now();
     // Sort
     const sortDependenciesStart = performance.now();
@@ -146,6 +152,7 @@ export default class DataTreeEvaluator {
     const sortDependenciesEnd = performance.now();
     // Inverse
     this.inverseDependencyMap = this.getInverseDependencyTree();
+    this.triggerFieldInverseDependencyMap = this.getInverseTriggerDependencyMap();
     // Evaluate
     const evaluateStart = performance.now();
     const { evalMetaUpdates, evaluatedTree } = this.evaluateTree(
@@ -309,6 +316,7 @@ export default class DataTreeEvaluator {
     const {
       dependenciesOfRemovedPaths,
       removedPaths,
+      triggerPathsToLint,
     } = this.updateDependencyMap(translatedDiffs, localUnEvalTree);
 
     const updateDependenciesStop = performance.now();
@@ -372,6 +380,23 @@ export default class DataTreeEvaluator {
     this.oldUnEvalTree = klona(localUnEvalTree);
     this.evalTree = newEvalTree;
 
+    if (triggerPathsToLint.length) {
+      triggerPathsToLint.forEach((triggerPath) => {
+        const { entityName } = getEntityNameAndPropertyPath(triggerPath);
+        const entity = this.evalTree[entityName] as
+          | DataTreeWidget
+          | DataTreeAction;
+        const unEvalPropertyValue = _.get(this.evalTree as any, triggerPath);
+        removeLintErrorsFromEntityProperty(this.evalTree, triggerPath);
+        const errors = this.lintTriggerPath(
+          unEvalPropertyValue,
+          entity,
+          this.evalTree,
+        );
+        errors.length &&
+          addErrorToEntityProperty(errors, this.evalTree, triggerPath);
+      });
+    }
     const timeTakenForSubTreeEval = {
       total: (totalEnd - totalStart).toFixed(2),
       findDifferences: (diffCheckTimeStop - diffCheckTimeStart).toFixed(2),
@@ -508,6 +533,58 @@ export default class DataTreeEvaluator {
       );
     });
     dependencyMap = makeParentsDependOnChildren(dependencyMap, this.allKeys);
+    return dependencyMap;
+  }
+
+  createTriggerFieldDependencyMap(unEvalTree: DataTree): DependencyMap {
+    const dependencyMap: DependencyMap = {};
+    this.allKeys = getAllPaths(unEvalTree);
+
+    Object.keys(unEvalTree).forEach((entityName) => {
+      const entity = unEvalTree[entityName];
+      if (isWidget(entity)) {
+        const dynamicTriggerPathlist = entity.dynamicTriggerPathList;
+        if (dynamicTriggerPathlist && dynamicTriggerPathlist.length) {
+          dynamicTriggerPathlist.forEach((dynamicPath) => {
+            const propertyPath = dynamicPath.key;
+            const unevalPropValue = _.get(entity, propertyPath);
+            const { jsSnippets } = getDynamicBindings(unevalPropValue);
+            const existingDeps =
+              dependencyMap[`${entityName}.${propertyPath}`] || [];
+            dependencyMap[
+              `${entityName}.${propertyPath}`
+            ] = existingDeps.concat(
+              jsSnippets.filter((jsSnippet) => !!jsSnippet),
+            );
+          });
+        }
+      }
+    });
+
+    Object.keys(dependencyMap).forEach((key) => {
+      dependencyMap[key] = _.flatten(
+        dependencyMap[key].map((path) => {
+          try {
+            return [
+              ...new Set(
+                extractReferencesFromBinding(path, this.allKeys).map(
+                  (reference) => reference.split(".")[0],
+                ),
+              ),
+            ];
+          } catch (error) {
+            this.errors.push({
+              type: EvalErrorTypes.EXTRACT_DEPENDENCY_ERROR,
+              message: (error as Error).message,
+              context: {
+                script: path,
+              },
+            });
+            return [];
+          }
+        }),
+      );
+    });
     return dependencyMap;
   }
 
@@ -1256,9 +1333,12 @@ export default class DataTreeEvaluator {
   ): {
     dependenciesOfRemovedPaths: Array<string>;
     removedPaths: Array<string>;
+    triggerPathsToLint: Array<string>;
   } {
     const diffCalcStart = performance.now();
     let didUpdateDependencyMap = false;
+    let triggerPathsToLint: string[] = [];
+    let didUpdateTriggerDependencyMap = false;
     const dependenciesOfRemovedPaths: Array<string> = [];
     const removedPaths: Array<string> = [];
 
@@ -1320,6 +1400,25 @@ export default class DataTreeEvaluator {
                 possibleReferencesInOldBindings,
               );
             }
+            // When path is present in entityMap
+            if (entityName === dataTreeDiff.payload.propertyPath) {
+              const possibleTriggerFieldReferences = this.getTriggerFieldReferencesInExistingBindings(
+                unEvalDataTree,
+                entityName,
+              );
+              if (Object.keys(possibleTriggerFieldReferences).length) {
+                didUpdateTriggerDependencyMap = true;
+                Object.assign(
+                  this.triggerFieldDependencyMap,
+                  possibleTriggerFieldReferences,
+                );
+                Object.keys(possibleTriggerFieldReferences).forEach(
+                  (triggerPath) => {
+                    triggerPathsToLint.push(triggerPath);
+                  },
+                );
+              }
+            }
             break;
           }
           case DataTreeDiffEvent.DELETE: {
@@ -1369,6 +1468,34 @@ export default class DataTreeEvaluator {
                 );
               }
             });
+
+            if (entityName === dataTreeDiff.payload.propertyPath) {
+              if (isWidget(entity)) {
+                entity.dynamicTriggerPathList?.forEach((triggerFieldName) => {
+                  delete this.triggerFieldDependencyMap[
+                    `${entityName}.${triggerFieldName.key}`
+                  ];
+                  didUpdateTriggerDependencyMap = true;
+                });
+              }
+
+              if (entityName in this.triggerFieldInverseDependencyMap) {
+                triggerPathsToLint = triggerPathsToLint.concat(
+                  this.triggerFieldInverseDependencyMap[entityName],
+                );
+                didUpdateTriggerDependencyMap = true;
+                this.triggerFieldInverseDependencyMap[entityName].forEach(
+                  (triggerField) => {
+                    this.triggerFieldDependencyMap[
+                      triggerField
+                    ] = this.triggerFieldDependencyMap[triggerField].filter(
+                      (field) => field !== entityName,
+                    );
+                  },
+                );
+              }
+            }
+
             break;
           }
           case DataTreeDiffEvent.EDIT: {
@@ -1445,6 +1572,52 @@ export default class DataTreeEvaluator {
                 delete this.dependencyMap[fullPropertyPath];
               }
             }
+            if (
+              isWidget(entity) &&
+              isPathADynamicTrigger(
+                entity,
+                getPropertyPath(dataTreeDiff.payload.propertyPath),
+              )
+            ) {
+              const { jsSnippets } = getDynamicBindings(
+                dataTreeDiff.payload.value || "",
+                entity,
+              );
+              const entityDependencies = jsSnippets.filter(
+                (jsSnippet) => !!jsSnippet,
+              );
+              const extractedEntityDependencies = _.flatten(
+                entityDependencies.map((binding) => {
+                  {
+                    try {
+                      return [
+                        ...new Set(
+                          extractReferencesFromBinding(
+                            binding,
+                            this.allKeys,
+                          ).map((reference) => reference.split(".")[0]),
+                        ),
+                      ];
+                    } catch (error) {
+                      this.errors.push({
+                        type: EvalErrorTypes.EXTRACT_DEPENDENCY_ERROR,
+                        message: (error as Error).message,
+                        context: {
+                          script: binding,
+                        },
+                      });
+                      return [];
+                    }
+                  }
+                }),
+              );
+
+              this.triggerFieldDependencyMap[
+                dataTreeDiff.payload.propertyPath
+              ] = extractedEntityDependencies;
+
+              didUpdateTriggerDependencyMap = true;
+            }
             break;
           }
           default: {
@@ -1494,6 +1667,9 @@ export default class DataTreeEvaluator {
       );
       this.inverseDependencyMap = this.getInverseDependencyTree();
     }
+    if (didUpdateTriggerDependencyMap) {
+      this.triggerFieldInverseDependencyMap = this.getInverseTriggerDependencyMap();
+    }
 
     const updateChangedDependenciesStop = performance.now();
     this.logs.push({
@@ -1504,7 +1680,7 @@ export default class DataTreeEvaluator {
       ).toFixed(2),
     });
 
-    return { dependenciesOfRemovedPaths, removedPaths };
+    return { dependenciesOfRemovedPaths, removedPaths, triggerPathsToLint };
   }
 
   applyDifferencesToEvalTree(differences: Diff<any, any>[]) {
@@ -1597,6 +1773,19 @@ export default class DataTreeEvaluator {
     // Remove any paths that do not exist in the data tree anymore
     return _.difference(completeSortOrder, removedPaths);
   }
+  getInverseTriggerDependencyMap(): DependencyMap {
+    const inverseTree: DependencyMap = {};
+    Object.keys(this.triggerFieldDependencyMap).forEach((triggerField) => {
+      this.triggerFieldDependencyMap[triggerField].forEach((field) => {
+        if (inverseTree[field]) {
+          inverseTree[field].push(triggerField);
+        } else {
+          inverseTree[field] = [triggerField];
+        }
+      });
+    });
+    return inverseTree;
+  }
 
   getInverseDependencyTree(): DependencyMap {
     const inverseDag: DependencyMap = {};
@@ -1661,6 +1850,66 @@ export default class DataTreeEvaluator {
               possibleRefs[path] = propertyBindings;
             }
           });
+        });
+      }
+    });
+    return possibleRefs;
+  }
+
+  getTriggerFieldReferencesInExistingBindings(
+    dataTree: DataTree,
+    entityNamePath: string,
+  ) {
+    const possibleRefs: DependencyMap = {};
+    Object.keys(dataTree).forEach((entityName) => {
+      const entity = dataTree[entityName];
+      if (isWidget(entity)) {
+        const dynamicTriggerPathlist = entity.dynamicTriggerPathList;
+        const entityPropertyBindings: DependencyMap = {};
+        if (dynamicTriggerPathlist && dynamicTriggerPathlist.length) {
+          dynamicTriggerPathlist.forEach((dynamicPath) => {
+            const propertyPath = dynamicPath.key;
+            const unevalPropValue = _.get(entity, propertyPath);
+            const { jsSnippets } = getDynamicBindings(unevalPropValue);
+            const existingDeps =
+              entityPropertyBindings[`${entityName}.${propertyPath}`] || [];
+            entityPropertyBindings[
+              `${entityName}.${propertyPath}`
+            ] = existingDeps.concat(
+              jsSnippets.filter((jsSnippet) => !!jsSnippet),
+            );
+          });
+        }
+
+        Object.keys(entityPropertyBindings).forEach((path) => {
+          const propertyBindings = entityPropertyBindings[path];
+          const references = _.flatten(
+            propertyBindings.map((binding) => {
+              {
+                try {
+                  return [
+                    ...new Set(
+                      extractReferencesFromBinding(binding, this.allKeys).map(
+                        (reference) => reference.split(".")[0],
+                      ),
+                    ),
+                  ];
+                } catch (error) {
+                  this.errors.push({
+                    type: EvalErrorTypes.EXTRACT_DEPENDENCY_ERROR,
+                    message: (error as Error).message,
+                    context: {
+                      script: binding,
+                    },
+                  });
+                  return [];
+                }
+              }
+            }),
+          );
+          if (references.includes(entityNamePath)) {
+            possibleRefs[path] = references;
+          }
         });
       }
     });
