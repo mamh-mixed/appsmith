@@ -73,6 +73,7 @@
         <module>appsmith-server</module>
         <module>appsmith-git</module>
         <module>reactive-caching</module>
+        <module>reactive-caching2</module>
     </modules>
 
 </project>

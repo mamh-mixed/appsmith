@@ -1,15 +1,17 @@
-package com.appsmith.caching.service;
+package com.appsmith.testcache.service;
 
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.appsmith.caching.annotations.CacheEvict;
+import com.appsmith.caching.components.CacheManager;
+import com.appsmith.testcache.model.ArgumentModel;
+import com.appsmith.testcache.model.TestModel;
 import com.appsmith.caching.annotations.Cache;
-import com.appsmith.caching.model.ArgumentModel;
-import com.appsmith.caching.model.TestModel;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -21,6 +23,8 @@ public class CacheTestService {
 
     PodamFactory factory = new PodamFactoryImpl();
 
+    @Autowired
+    CacheManager cacheManager;
     /**
      * This method is used to test the caching functionality for Mono<T>.
      * @param id The id
@@ -28,6 +32,7 @@ public class CacheTestService {
      */
     @Cache(cacheName = "objectcache")
     public Mono<TestModel> getObjectFor(String id) {
+        cacheManager.logStats();
         TestModel model = factory.manufacturePojo(TestModel.class);
         model.setId(id);
         return Mono.just(model).delayElement(Duration.ofSeconds(2));

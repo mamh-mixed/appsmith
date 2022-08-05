@@ -1,4 +1,4 @@
-package com.appsmith.caching.test;
+package com.appsmith.cachingtest.test;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -13,9 +13,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import com.appsmith.caching.components.CacheManager;
-import com.appsmith.caching.model.ArgumentModel;
-import com.appsmith.caching.model.TestModel;
-import com.appsmith.caching.service.CacheTestService;
+import com.appsmith.cachingtest.model.ArgumentModel;
+import com.appsmith.cachingtest.model.TestModel;
+import com.appsmith.cachingtest.service.CacheTestService;
 
 import lombok.extern.slf4j.Slf4j;
 

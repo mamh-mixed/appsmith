@@ -1,5 +1,6 @@
 package com.appsmith.server.controllers.ce;
 
+import com.appsmith.caching.annotations.Cache;
 import com.appsmith.server.constants.CommentOnboardingState;
 import com.appsmith.server.constants.Url;
 import com.appsmith.server.domains.User;
@@ -136,6 +137,7 @@ public class UserControllerCE extends BaseController<UserService, User, String> 
     }
 
     @GetMapping("/me")
+    @Cache(cacheName = "user-me")
     public Mono<ResponseDTO<UserProfileDTO>> getUserProfile() {
         return sessionUserService.getCurrentUser()
                 .flatMap(service::buildUserProfileDTO)

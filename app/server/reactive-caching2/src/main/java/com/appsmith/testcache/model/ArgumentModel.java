@@ -1,4 +1,4 @@
-package com.appsmith.caching.model;
+package com.appsmith.testcache.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

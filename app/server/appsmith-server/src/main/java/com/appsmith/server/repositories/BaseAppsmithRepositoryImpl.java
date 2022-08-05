@@ -1,5 +1,8 @@
 package com.appsmith.server.repositories;
 
+import com.appsmith.caching.annotations.Cache;
+import com.appsmith.caching.aspects.CacheAspect;
+import com.appsmith.caching.components.CacheManager;
 import com.appsmith.external.models.BaseDomain;
 import com.appsmith.external.models.Policy;
 import com.appsmith.external.models.QBaseDomain;
@@ -52,6 +55,12 @@ public abstract class BaseAppsmithRepositoryImpl<T extends BaseDomain> {
     protected final MongoConverter mongoConverter;
 
     @Autowired
+    private CacheManager cacheManager;
+
+    @Autowired
+    private CacheAspect cacheAspect;
+
+    @Autowired
     public BaseAppsmithRepositoryImpl(ReactiveMongoOperations mongoOperations,
                                       MongoConverter mongoConverter) {
         this.mongoOperations = mongoOperations;
@@ -94,6 +103,7 @@ public abstract class BaseAppsmithRepositoryImpl<T extends BaseDomain> {
      * @param user
      * @return
      */
+    @Cache(cacheName = "permissionGroupsForUser")
     protected Mono<Set<String>> getAllPermissionGroupsForUser(User user) {
         return Mono.zip(getPermissionGroupsOfUser(user), getAnonymousUserPermissionGroups())
                 .map(tuple -> {
@@ -318,6 +328,11 @@ public abstract class BaseAppsmithRepositoryImpl<T extends BaseDomain> {
                 .map(ctx -> ctx.getAuthentication())
                 .map(auth -> auth.getPrincipal())
                 .flatMap(principal -> getAllPermissionGroupsForUser((User) principal))
+                .map(t -> {
+                    log.info("Permission groups for user: {}", t);
+                    cacheManager.logStats();
+                    return t;
+                })
                 .flatMapMany(permissionGroups -> {
                     Query query = new Query();
                     if(!CollectionUtils.isEmpty(includeFields)) {

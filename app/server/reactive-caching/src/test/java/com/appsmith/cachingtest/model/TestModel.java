@@ -1,4 +1,4 @@
-package com.appsmith.caching.model;
+package com.appsmith.cachingtest.model;
 
 import java.time.Instant;
 
