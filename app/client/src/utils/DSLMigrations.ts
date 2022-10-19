@@ -24,6 +24,7 @@ import {
   isSortableMigration,
   migrateTableWidgetIconButtonVariant,
   migrateTableWidgetV2Validation,
+  migrateTableWidgetV2ValidationBinding,
 } from "./migrations/TableWidget";
 import {
   migrateTextStyleFromTextWidget,
@@ -1121,6 +1122,11 @@ export const transformDSL = (
 
   if (currentDSL.version === 63) {
     currentDSL = migrateMapChartWidgetReskinningData(currentDSL);
+    currentDSL.version = 64;
+  }
+
+  if (currentDSL.version === 64) {
+    currentDSL = migrateTableWidgetV2ValidationBinding(currentDSL);
     currentDSL.version = LATEST_PAGE_VERSION;
   }
 
